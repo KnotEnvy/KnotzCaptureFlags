@@ -84,8 +84,8 @@ let score = 0;
 const addRandomObject = () => {
   const geometries = [
     new THREE.BoxGeometry(),
-    new THREE.ConeGeometry(0.5, 1, 32),
-    new THREE.CylinderGeometry(0.5, 0.5, 1, 32),
+    new THREE.ConeGeometry(0.5, 1, 62),
+    new THREE.CylinderGeometry(0.5, 0.5, 1, 62),
   ];
   const material = new THREE.MeshPhongMaterial({ color: Math.random() * 0xffffff });
   const mesh = new THREE.Mesh(geometries[Math.floor(Math.random() * geometries.length)], material);
