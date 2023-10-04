@@ -60,6 +60,51 @@ let velocityZ = 0;
 // Player score
 let score = 0;
 
+// Create a particle system  
+const particlesGeometry = new THREE.BufferGeometry();
+const particlesCnt = 5000;
+
+const posArray = new Float32Array(particlesCnt * 3);
+
+for(let i = 0; i < particlesCnt * 3; i++) {
+  // particles positions between -10 to 10
+  posArray[i] = (Math.random() - 0.5) * 20;
+}
+
+particlesGeometry.setAttribute('position', new THREE.BufferAttribute(posArray, 3));
+
+const particlesMaterial = new THREE.PointsMaterial({
+  size: 0.1,
+  color: 0xffffff
+});
+
+const particles = new THREE.Points(particlesGeometry, particlesMaterial);
+scene.add(particles);
+
+// Make particles fall
+const particlesSpeed = 0.1; 
+
+const particleAnimate = () => {
+  particles.rotation.z += 0.01;
+  
+  // Lower y position over time
+  particlesGeometry.attributes.position.array.forEach((v, i) => {
+    if(i % 3 === 1) particlesGeometry.attributes.position.array[i] -= particlesSpeed; 
+  });
+  
+  // Respawn particles that reach the ground
+  particlesGeometry.attributes.position.array.forEach((v, i) => {
+    if(particlesGeometry.attributes.position.array[i + 1] < -10) {
+      particlesGeometry.attributes.position.array[i + 1] = 10;
+    }
+  });
+
+  particlesGeometry.attributes.position.needsUpdate = true;
+}
+
+
+
+
 const objectTypes = [
     { color: 0xff0000, speed: 0.05 },
     { color: 0x00ff00, speed: 0.08 },
@@ -84,6 +129,7 @@ const addRandomObject = () => {
     scene.add(mesh);
     objects.push(mesh);
   };
+
 
 // Array to hold moving obstacles
 const movingObstacles = [];
@@ -167,6 +213,7 @@ playerMaterial.needsUpdate = true;
 
 // Render loop (Game Loop)
 const animate = () => {
+    particleAnimate();
   if (score < 10) {
     requestAnimationFrame(animate);
   } else {
