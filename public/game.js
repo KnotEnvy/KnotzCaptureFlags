@@ -19,7 +19,7 @@ document.body.appendChild(scoreElement);
 const textureLoader = new THREE.TextureLoader();
 const objectTexture = textureLoader.load('txture.jpg');
 // Add player object (a sphere) to the scene
-const playerGeometry = new THREE.SphereGeometry(0.5, 32, 32);
+const playerGeometry = new THREE.SphereGeometry(0.9, 32, 32);
 const playerMaterial = new THREE.MeshPhongMaterial({ map: objectTexture });
 const player = new THREE.Mesh(playerGeometry, playerMaterial);
 scene.add(player);
@@ -50,25 +50,6 @@ const pointLight = new THREE.PointLight(0xffffff, 1, 100);
 pointLight.position.set(10, 15, 5);
 scene.add(pointLight);
 
-// Create an array of URLs for the skybox images
-const skyboxImageURLs = [
-    'imgs/arid_bk.jpg', 'imgs/arid_dn.jpg',
-    'imgs/arid_ft.jpg', 'imgs/arid_lf.jpg',
-    'imgs/arid_rt.jpg', 'imgs/arid_up.jpg'
-  ];
-  
-  // Load textures for the skybox
-  const skyboxTextures = new THREE.CubeTextureLoader().load(skyboxImageURLs);
-  
-  // Create the skybox
-  const skyboxMaterial = new THREE.MeshBasicMaterial({ 
-    map: skyboxTextures, 
-    side: THREE.BackSide
-  });
-  const skyboxGeometry = new THREE.BoxGeometry(100,100,100);
-  const skybox = new THREE.Mesh(skyboxGeometry, skyboxMaterial);
-  scene.add(skybox);
-
 // Array to hold falling objects
 const objects = [];
 
@@ -79,22 +60,59 @@ let velocityZ = 0;
 // Player score
 let score = 0;
 
+const objectTypes = [
+    { color: 0xff0000, speed: 0.05 },
+    { color: 0x00ff00, speed: 0.08 },
+    { color: 0x0000ff, speed: 0.02 },
+  ];
 
 // Generate random falling objects
+// Generate random falling objects with types
 const addRandomObject = () => {
-  const geometries = [
-    new THREE.BoxGeometry(),
-    new THREE.ConeGeometry(0.5, 1, 62),
-    new THREE.CylinderGeometry(0.5, 0.5, 1, 62),
-  ];
-  const material = new THREE.MeshPhongMaterial({ color: Math.random() * 0xffffff });
-  const mesh = new THREE.Mesh(geometries[Math.floor(Math.random() * geometries.length)], material);
-  mesh.position.y = 5;
-  mesh.position.z = (Math.random() - 0.5) * 8;
-  mesh.position.x = (Math.random() - 0.5) * 8;
-  scene.add(mesh);
-  objects.push(mesh);
-};
+    const randomType = objectTypes[Math.floor(Math.random() * objectTypes.length)];
+    const geometries = [
+      new THREE.BoxGeometry(),
+      new THREE.ConeGeometry(0.5, 1, 32),
+      new THREE.CylinderGeometry(0.5, 0.5, 1, 32),
+    ];
+    const material = new THREE.MeshPhongMaterial({ color: randomType.color });
+    const mesh = new THREE.Mesh(geometries[Math.floor(Math.random() * geometries.length)], material);
+    mesh.userData.speed = randomType.speed; // Attach speed to object
+    mesh.position.y = 5;
+    mesh.position.z = (Math.random() - 0.5) * 8;
+    mesh.position.x = (Math.random() - 0.5) * 8;
+    scene.add(mesh);
+    objects.push(mesh);
+  };
+
+// Array to hold moving obstacles
+const movingObstacles = [];
+
+// Function to add moving obstacles
+const addMovingObstacle = () => {
+    const geometry = new THREE.BoxGeometry();
+    const material = new THREE.MeshPhongMaterial({ color: 0xff00ff }); // Purple color
+    const obstacle = new THREE.Mesh(geometry, material);
+    obstacle.position.y = -4;
+    obstacle.position.x = (Math.random() - 0.5) * 8;
+    obstacle.position.z = (Math.random() - 0.5) * 8;
+    obstacle.userData.directionX = (Math.random() - 0.5) * 0.02; // Random initial direction X
+    obstacle.userData.directionZ = (Math.random() - 0.5) * 0.02; // Random initial direction Z
+    scene.add(obstacle);
+    movingObstacles.push(obstacle);
+  };
+// Add a moving obstacle every 5 seconds
+setInterval(addMovingObstacle, 5000);
+
+// Create a "shield" around the player
+const shieldGeometry = new THREE.SphereGeometry(1.6, 32, 32);
+const shieldMaterial = new THREE.MeshPhongMaterial({ color: 0xffff00, transparent: true, opacity: 0.5 });
+const shield = new THREE.Mesh(shieldGeometry, shieldMaterial);
+shield.visible = false;  // Initially not visible
+player.add(shield);  // Attach to the player
+
+// Shield status
+let shieldActive = false;
 
 // Collision detection
 const checkCollision = (a, b) => {
@@ -118,6 +136,11 @@ document.addEventListener('keydown', (event) => {
         velocityZ = 0.2;
         break;
     }
+    if (event.code === 'KeyS') {
+        shield.visible = true;
+        shieldActive = true;
+    }
+
   });
   
   document.addEventListener('keyup', (event) => {
@@ -130,6 +153,10 @@ document.addEventListener('keydown', (event) => {
       case 'ArrowDown':
         velocityZ = 0;
         break;
+    }
+    if (event.code === 'KeyS') {
+        shield.visible = false;
+        shieldActive = false;
     }
   });
 
@@ -157,7 +184,7 @@ const animate = () => {
 
   // Move falling objects and check for collisions
   objects.forEach((object) => {
-    object.position.y -= 0.05;
+    object.position.y -= object.userData.speed;  // Use object's speed
     if (checkCollision(player, object)) {
       score++;
       scoreElement.innerHTML = `Score: ${score}`;
@@ -170,6 +197,28 @@ const animate = () => {
         objects.splice(index, 1);
       }
     }
+    // Move the obstacles horizontally
+    movingObstacles.forEach((obstacle) => {
+        obstacle.position.x += obstacle.userData.directionX;
+        obstacle.position.z += obstacle.userData.directionZ;
+        
+        if (obstacle.position.x >= 4 || obstacle.position.x <= -4) {
+          obstacle.userData.directionX *= -1; // Reverse direction at X boundaries
+        }
+        if (obstacle.position.z >= 4 || obstacle.position.z <= -4) {
+          obstacle.userData.directionZ *= -1; // Reverse direction at Z boundaries
+        }
+      });
+    if (shieldActive) {
+        objects.forEach((object) => {
+          if (checkCollision(shield, object)) {
+            scene.remove(object);
+            objects.splice(objects.indexOf(object), 1);
+            score++;
+            scoreElement.innerHTML = `Score: ${score}`;
+          }
+        });
+      }
   });
 
   // Add new falling object at random intervals
