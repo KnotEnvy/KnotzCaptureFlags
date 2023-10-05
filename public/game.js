@@ -85,7 +85,7 @@ scene.add(particles);
 const particlesSpeed = 0.1; 
 
 const particleAnimate = () => {
-  particles.rotation.z += 0.01;
+//   particles.rotation.z += 0.01;
   
   // Lower y position over time
   particlesGeometry.attributes.position.array.forEach((v, i) => {
@@ -120,6 +120,8 @@ const addRandomObject = () => {
       new THREE.ConeGeometry(0.5, 1, 32),
       new THREE.CylinderGeometry(0.5, 0.5, 1, 32),
     ];
+    // object.rotation.y = Math.random() * 2 * Math.PI; // Random start rotation 
+    // object.scale.set(0.5, 1, 0.5); // Scale
     const material = new THREE.MeshPhongMaterial({ color: randomType.color });
     const mesh = new THREE.Mesh(geometries[Math.floor(Math.random() * geometries.length)], material);
     mesh.userData.speed = randomType.speed; // Attach speed to object
