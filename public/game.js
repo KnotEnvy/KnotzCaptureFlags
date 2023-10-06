@@ -50,6 +50,48 @@ const pointLight = new THREE.PointLight(0xffffff, 1, 100);
 pointLight.position.set(10, 15, 5);
 scene.add(pointLight);
 
+
+
+// Key light
+// const keyLight = new THREE.DirectionalLight(0xffffff, 0.5);
+// keyLight.position.set(10, 20, 10); 
+// scene.add(keyLight);
+
+// Fill light 
+// const fillLight = new THREE.DirectionalLight(0xffffff, 0.4);
+// fillLight.position.set(-10, 20, 10);
+// scene.add(fillLight);
+
+// Back light
+// const backLight = new THREE.DirectionalLight(0xffffff, 0.3);  
+// backLight.position.set(0, -10, -10).normalize();
+// scene.add(backLight);
+
+// const effect = new THREE.DepthOfFieldEffect(camera);
+// effect.setSize(width, height);
+
+// // Add it to the renderer  
+// renderer.addEffect(effect);
+
+// const bloom = new THREE.BloomEffect();
+// bloom.addSaturation(3); 
+
+// // Add it to the renderer
+// renderer.addEffect(bloom);
+
+// Enable shadow mapping in the renderer
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = THREE.PCFSoftShadowMap;  // Optional, for softer shadows
+
+// Enable shadows for the point light
+pointLight.castShadow = true;
+
+// Configure the objects to cast and receive shadows
+player.castShadow = true;
+player.receiveShadow = true;
+
+ground.receiveShadow = true;
+
 // Array to hold falling objects
 const objects = [];
 
@@ -61,28 +103,28 @@ let velocityZ = 0;
 let score = 0;
 
 // Create a particle system  
-const particlesGeometry = new THREE.BufferGeometry();
-const particlesCnt = 5000;
+// const particlesGeometry = new THREE.BufferGeometry();
+// const particlesCnt = 5000;
 
-const posArray = new Float32Array(particlesCnt * 3);
+// const posArray = new Float32Array(particlesCnt * 3);
 
-for(let i = 0; i < particlesCnt * 3; i++) {
-  // particles positions between -10 to 10
-  posArray[i] = (Math.random() - 0.5) * 20;
-}
+// for(let i = 0; i < particlesCnt * 3; i++) {
+//   // particles positions between -10 to 10
+//   posArray[i] = (Math.random() - 0.5) * 20;
+// }
 
-particlesGeometry.setAttribute('position', new THREE.BufferAttribute(posArray, 3));
+// particlesGeometry.setAttribute('position', new THREE.BufferAttribute(posArray, 3));
 
-const particlesMaterial = new THREE.PointsMaterial({
-  size: 0.1,
-  color: 0xffffff
-});
+// const particlesMaterial = new THREE.PointsMaterial({
+//   size: 0.1,
+//   color: 0xffffff
+// });
 
-const particles = new THREE.Points(particlesGeometry, particlesMaterial);
-scene.add(particles);
+// const particles = new THREE.Points(particlesGeometry, particlesMaterial);
+// scene.add(particles);
 
-// Make particles fall
-const particlesSpeed = 0.1; 
+// // Make particles fall
+// const particlesSpeed = 0.1; 
 
 const particleAnimate = () => {
 //   particles.rotation.z += 0.01;
@@ -101,8 +143,6 @@ const particleAnimate = () => {
 
   particlesGeometry.attributes.position.needsUpdate = true;
 }
-
-
 
 
 const objectTypes = [
@@ -126,8 +166,9 @@ const addRandomObject = () => {
     const mesh = new THREE.Mesh(geometries[Math.floor(Math.random() * geometries.length)], material);
     mesh.userData.speed = randomType.speed; // Attach speed to object
     mesh.position.y = 5;
-    mesh.position.z = (Math.random() - 0.5) * 8;
-    mesh.position.x = (Math.random() - 0.5) * 8;
+    mesh.position.z = (Math.random() - 0.2) * 10;
+    mesh.position.x = (Math.random() - 0.5) * 10;
+    mesh.castShadow = true;
     scene.add(mesh);
     objects.push(mesh);
   };
@@ -146,6 +187,8 @@ const addMovingObstacle = () => {
     obstacle.position.z = (Math.random() - 0.5) * 8;
     obstacle.userData.directionX = (Math.random() - 0.5) * 0.02; // Random initial direction X
     obstacle.userData.directionZ = (Math.random() - 0.5) * 0.02; // Random initial direction Z
+    obstacle.castShadow = true;
+
     scene.add(obstacle);
     movingObstacles.push(obstacle);
   };
@@ -153,7 +196,7 @@ const addMovingObstacle = () => {
 setInterval(addMovingObstacle, 5000);
 
 // Create a "shield" around the player
-const shieldGeometry = new THREE.SphereGeometry(1.6, 32, 32);
+const shieldGeometry = new THREE.SphereGeometry(1.25, 32, 32);
 const shieldMaterial = new THREE.MeshPhongMaterial({ color: 0xffff00, transparent: true, opacity: 0.5 });
 const shield = new THREE.Mesh(shieldGeometry, shieldMaterial);
 shield.visible = false;  // Initially not visible
@@ -161,6 +204,101 @@ player.add(shield);  // Attach to the player
 
 // Shield status
 let shieldActive = false;
+
+// Array to hold projectiles
+const projectiles = [];
+
+// Function to fire a projectile
+const fireProjectile = () => {
+  const geometry = new THREE.SphereGeometry(0.1, 32, 32);
+  const material = new THREE.MeshPhongMaterial({ color: 0xffffff });  // White color
+  const projectile = new THREE.Mesh(geometry, material);
+  projectile.position.set(player.position.x, player.position.y, player.position.z);
+  projectile.userData.speed = 0.2;
+  projectile.castShadow = true;
+  scene.add(projectile);
+  projectiles.push(projectile);
+};
+
+// Function to create shattered pieces
+const createShatteredPieces = (object) => {
+  const geometry = new THREE.BoxGeometry(0.2, 0.2, 0.2);
+  const material = new THREE.MeshPhongMaterial({ color: object.material.color });
+  const pieces = [];
+
+  for (let i = 0; i < 10; i++) {
+    const piece = new THREE.Mesh(geometry, material);
+    piece.position.set(object.position.x, object.position.y, object.position.z);
+    piece.userData.speed = Math.random() * 0.1 + 0.05;
+    piece.userData.direction = new THREE.Vector3(Math.random() - 0.5, Math.random(), Math.random() - 0.5).normalize();
+
+    piece.userData.explodeTime = 0.2; // Time to explode outward
+    piece.userData.gravityTime = 0;  // Time under gravity
+    piece.castShadow = true;
+    scene.add(piece);
+    pieces.push(piece);
+  }
+
+  return pieces;
+};
+
+const shatteredPieces = [];
+// Function to handle projectiles
+const handleProjectiles = () => {
+  projectiles.forEach((projectile) => {
+    projectile.position.y += projectile.userData.speed;
+    
+    objects.forEach((object) => {
+      if (checkCollision(projectile, object)) {
+        const pieces = createShatteredPieces(object);
+        shatteredPieces.push(...pieces);
+        scene.remove(object);
+        objects.splice(objects.indexOf(object), 1);
+        
+        // Remove the projectile
+        scene.remove(projectile);
+        projectiles.splice(projectiles.indexOf(projectile), 1);
+        
+        // Increase the score
+        score++;
+        scoreElement.innerHTML = `Score: ${score}`;
+      }
+    });
+    
+    if (projectile.position.y > 6) {
+      // Remove the projectile if it goes out of bounds
+      scene.remove(projectile);
+      projectiles.splice(projectiles.indexOf(projectile), 1);
+    }
+  });
+};
+
+// Function to handle shattered pieces
+const handleShatteredPieces = () => {
+  shatteredPieces.forEach((piece) => {
+    if (piece.userData.explodeTime > 0) {
+      // Explode outward
+      piece.position.addScaledVector(piece.userData.direction, 0.05);
+      piece.userData.explodeTime -= 0.01;
+    } else {
+      // Simulate gravity
+      piece.userData.gravityTime += 0.01;
+      piece.position.y -= piece.userData.gravityTime;
+    }
+
+    if (piece.position.y < -6) {
+      // Remove piece from scene and array
+      scene.remove(piece);
+      shatteredPieces.splice(shatteredPieces.indexOf(piece), 1);
+    }
+  });
+};
+
+
+
+
+
+
 
 // Collision detection
 const checkCollision = (a, b) => {
@@ -188,6 +326,9 @@ document.addEventListener('keydown', (event) => {
         shield.visible = true;
         shieldActive = true;
     }
+    if (event.code === 'Space') {
+      fireProjectile();
+    }
 
   });
   
@@ -213,30 +354,29 @@ playerMaterial.color.setHex(0x00ff00);
 playerMaterial.needsUpdate = true;  
 
 
+let gameOver = false;
+
 // Render loop (Game Loop)
 const animate = () => {
-    particleAnimate();
-  if (score < 10) {
-    requestAnimationFrame(animate);
-  } else {
-    scoreElement.innerHTML = `Game Over! Final Score: ${score}`;
+    // particleAnimate();
+  if (gameOver) {
     return;
   }
 
   // Update player position with velocity and boundary checks
   player.position.x += velocityX;
-  player.position.x = Math.min(Math.max(player.position.x, -4), 4);
+  player.position.x = Math.min(Math.max(player.position.x, -8), 8);
   
   player.position.z += velocityZ;
-  player.position.z = Math.min(Math.max(player.position.z, -4), 4);
+  player.position.z = Math.min(Math.max(player.position.z, -8), 5);
   
 
   // Move falling objects and check for collisions
   objects.forEach((object) => {
     object.position.y -= object.userData.speed;  // Use object's speed
     if (checkCollision(player, object)) {
-      score++;
-      scoreElement.innerHTML = `Score: ${score}`;
+      gameOver = true;
+      scoreElement.innerHTML =`Game Over! Final Score: ${score}`
     }
     if (object.position.y < -6) {
       // Remove object from scene and array
@@ -251,10 +391,10 @@ const animate = () => {
         obstacle.position.x += obstacle.userData.directionX;
         obstacle.position.z += obstacle.userData.directionZ;
         
-        if (obstacle.position.x >= 4 || obstacle.position.x <= -4) {
+        if (obstacle.position.x >= 8 || obstacle.position.x <= -8) {
           obstacle.userData.directionX *= -1; // Reverse direction at X boundaries
         }
-        if (obstacle.position.z >= 4 || obstacle.position.z <= -4) {
+        if (obstacle.position.z >= 5 || obstacle.position.z <= -8) {
           obstacle.userData.directionZ *= -1; // Reverse direction at Z boundaries
         }
       });
@@ -274,8 +414,11 @@ const animate = () => {
   if (Math.random() < 0.05) {
     addRandomObject();
   }
-
+  // Handle projectiles
+  handleProjectiles();
+  handleShatteredPieces();
   renderer.render(scene, camera);
+  requestAnimationFrame(animate);
 };
 
 // Start the animation
