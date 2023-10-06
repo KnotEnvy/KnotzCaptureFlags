@@ -1,10 +1,10 @@
 // Initialize scene and camera
 const scene = new THREE.Scene();
 const camera = new THREE.PerspectiveCamera(
-  88,
+  75,
   window.innerWidth / window.innerHeight,
   0.1,
-  10000
+  1000
 );
 
 // Initialize renderer
@@ -29,7 +29,7 @@ document.body.appendChild(ammoElement);
 const textureLoader = new THREE.TextureLoader();
 const objectTexture = textureLoader.load("txture.jpg");
 // Add player object (a sphere) to the scene
-const playerGeometry = new THREE.SphereGeometry(0.9, 16, 32);
+const playerGeometry = new THREE.SphereGeometry(0.7, 32, 32);
 const playerMaterial = new THREE.MeshPhongMaterial({ map: objectTexture });
 const player = new THREE.Mesh(playerGeometry, playerMaterial);
 scene.add(player);
@@ -39,11 +39,11 @@ playerMaterial.color.setHex(0x00ff00);
 playerMaterial.needsUpdate = true;
 
 // Position the player at the bottom of the screen
-player.position.y = -4;
+player.position.y = -4.5;
 
 // Adjust camera position
-camera.position.y = 3;
-camera.position.z = 10;
+camera.position.y = 13;
+camera.position.z = 20;
 camera.rotation.x = -Math.PI / 8;
 
 // Create a ground plane
@@ -61,8 +61,20 @@ scene.add(ambientLight);
 
 // Add point light
 const pointLight = new THREE.PointLight(0xffffff, 1, 100);
-pointLight.position.set(10, 15, 5);
+pointLight.position.set(0, 0, 0);
 scene.add(pointLight);
+
+// Key light
+const keyLight = new THREE.DirectionalLight(0xff00ff, 0.5);
+keyLight.position.set(2, 8, 10); 
+scene.add(keyLight);
+
+// // Fill light 
+// const fillLight = new THREE.DirectionalLight(0xffffff, 0.4);
+// fillLight.position.set(-10, 10, 5);
+// scene.add(fillLight);
+
+
 
 // Enable shadow mapping in the renderer
 renderer.shadowMap.enabled = true;
@@ -70,6 +82,8 @@ renderer.shadowMap.type = THREE.PCFSoftShadowMap; // Optional, for softer shadow
 
 // Enable shadows for the point light
 pointLight.castShadow = true;
+keyLight.castShadow = true;
+// fillLight.castShadow = true;
 
 // Configure the objects to cast and receive shadows
 player.castShadow = true;
@@ -110,7 +124,7 @@ const addRandomObject = () => {
     material
   );
   mesh.userData.speed = randomType.speed; // Attach speed to object
-  mesh.position.y = 5;
+  mesh.position.y = 10;
   mesh.position.z = (Math.random() - 0.5) * 18;
   mesh.position.x = (Math.random() - 0.5) * 24;
   mesh.castShadow = true;
@@ -159,7 +173,7 @@ const projectiles = [];
 // Function to fire a projectile
 const fireProjectile = () => {
   const geometry = new THREE.SphereGeometry(0.1, 32, 32);
-  const material = new THREE.MeshPhongMaterial({ color: 0xffffff }); // White color
+  const material = new THREE.MeshPhongMaterial({ color: 0xffffff }); 
   const projectile = new THREE.Mesh(geometry, material);
   projectile.position.set(
     player.position.x,
@@ -325,6 +339,10 @@ document.addEventListener("keyup", (event) => {
 const flagGeometry = new THREE.BoxGeometry(1, 1, 0.5);
 const flagMaterial = new THREE.MeshPhongMaterial({ color: 0xffff00 }); // Yellow color
 const flag = new THREE.Mesh(flagGeometry, flagMaterial);
+flag.castShadow = true;
+flag.receiveShadow = true;
+
+
 flag.position.y = -4.5; // Close to the ground
 scene.add(flag);
 
@@ -342,7 +360,7 @@ const handlePlayerAndFlag = () => {
   if (checkCollision(player, flag)) {
     score += 10;
     scoreElement.innerHTML = `Score: ${score}`;
-    ammo = Math.min(ammo + 5, 30); // Increase ammo, up to a max of 30
+    ammo = Math.min(ammo + 10, 30); // Increase ammo, up to a max of 30
     ammoElement.innerHTML = `Ammo: ${ammo}`;
     respawnFlag();
   }
