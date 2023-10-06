@@ -1,6 +1,11 @@
 // Initialize scene and camera
 const scene = new THREE.Scene();
-const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+const camera = new THREE.PerspectiveCamera(
+  88,
+  window.innerWidth / window.innerHeight,
+  0.1,
+  10000
+);
 
 // Initialize renderer
 const renderer = new THREE.WebGLRenderer();
@@ -8,21 +13,30 @@ renderer.setSize(window.innerWidth, window.innerHeight);
 document.body.appendChild(renderer.domElement);
 
 // Initialize score display
-const scoreElement = document.createElement('div');
-scoreElement.style.position = 'absolute';
-scoreElement.style.top = '20px';
-scoreElement.style.left = '20px';
-scoreElement.style.fontSize = '24px';
+const scoreElement = document.createElement("div");
+scoreElement.style.position = "absolute";
+scoreElement.style.fontSize = "48px";
 document.body.appendChild(scoreElement);
 
+// Initialize ammo display
+const ammoElement = document.createElement("div");
+ammoElement.style.position = "absolute";
+ammoElement.style.top = "60px";
+ammoElement.style.left = "20px";
+ammoElement.style.fontSize = "24px";
+document.body.appendChild(ammoElement);
 
 const textureLoader = new THREE.TextureLoader();
-const objectTexture = textureLoader.load('txture.jpg');
+const objectTexture = textureLoader.load("txture.jpg");
 // Add player object (a sphere) to the scene
-const playerGeometry = new THREE.SphereGeometry(0.9, 32, 32);
+const playerGeometry = new THREE.SphereGeometry(0.9, 16, 32);
 const playerMaterial = new THREE.MeshPhongMaterial({ map: objectTexture });
 const player = new THREE.Mesh(playerGeometry, playerMaterial);
 scene.add(player);
+
+// Update material to respond to lighting
+playerMaterial.color.setHex(0x00ff00);
+playerMaterial.needsUpdate = true;
 
 // Position the player at the bottom of the screen
 player.position.y = -4;
@@ -34,11 +48,11 @@ camera.rotation.x = -Math.PI / 8;
 
 // Create a ground plane
 
-const groundGeometry = new THREE.PlaneGeometry(20, 20, 32, 32);
-const groundMaterial = new THREE.MeshPhongMaterial({ map: objectTexture });  // Changed material type
+const groundGeometry = new THREE.PlaneGeometry(40, 40, 32, 32);
+const groundMaterial = new THREE.MeshPhongMaterial({ map: objectTexture }); // Changed material type
 const ground = new THREE.Mesh(groundGeometry, groundMaterial);
-ground.rotation.x = -Math.PI / 2;  // Rotate the plane to be horizontal
-ground.position.y = -5;  // Position it a bit lower to be in the camera's view
+ground.rotation.x = -Math.PI / 2; // Rotate the plane to be horizontal
+ground.position.y = -5; // Position it a bit lower to be in the camera's view
 scene.add(ground);
 
 // Add ambient light
@@ -50,38 +64,9 @@ const pointLight = new THREE.PointLight(0xffffff, 1, 100);
 pointLight.position.set(10, 15, 5);
 scene.add(pointLight);
 
-
-
-// Key light
-// const keyLight = new THREE.DirectionalLight(0xffffff, 0.5);
-// keyLight.position.set(10, 20, 10); 
-// scene.add(keyLight);
-
-// Fill light 
-// const fillLight = new THREE.DirectionalLight(0xffffff, 0.4);
-// fillLight.position.set(-10, 20, 10);
-// scene.add(fillLight);
-
-// Back light
-// const backLight = new THREE.DirectionalLight(0xffffff, 0.3);  
-// backLight.position.set(0, -10, -10).normalize();
-// scene.add(backLight);
-
-// const effect = new THREE.DepthOfFieldEffect(camera);
-// effect.setSize(width, height);
-
-// // Add it to the renderer  
-// renderer.addEffect(effect);
-
-// const bloom = new THREE.BloomEffect();
-// bloom.addSaturation(3); 
-
-// // Add it to the renderer
-// renderer.addEffect(bloom);
-
 // Enable shadow mapping in the renderer
 renderer.shadowMap.enabled = true;
-renderer.shadowMap.type = THREE.PCFSoftShadowMap;  // Optional, for softer shadows
+renderer.shadowMap.type = THREE.PCFSoftShadowMap; // Optional, for softer shadows
 
 // Enable shadows for the point light
 pointLight.castShadow = true;
@@ -102,105 +87,68 @@ let velocityZ = 0;
 // Player score
 let score = 0;
 
-// Create a particle system  
-// const particlesGeometry = new THREE.BufferGeometry();
-// const particlesCnt = 5000;
-
-// const posArray = new Float32Array(particlesCnt * 3);
-
-// for(let i = 0; i < particlesCnt * 3; i++) {
-//   // particles positions between -10 to 10
-//   posArray[i] = (Math.random() - 0.5) * 20;
-// }
-
-// particlesGeometry.setAttribute('position', new THREE.BufferAttribute(posArray, 3));
-
-// const particlesMaterial = new THREE.PointsMaterial({
-//   size: 0.1,
-//   color: 0xffffff
-// });
-
-// const particles = new THREE.Points(particlesGeometry, particlesMaterial);
-// scene.add(particles);
-
-// // Make particles fall
-// const particlesSpeed = 0.1; 
-
-const particleAnimate = () => {
-//   particles.rotation.z += 0.01;
-  
-  // Lower y position over time
-  particlesGeometry.attributes.position.array.forEach((v, i) => {
-    if(i % 3 === 1) particlesGeometry.attributes.position.array[i] -= particlesSpeed; 
-  });
-  
-  // Respawn particles that reach the ground
-  particlesGeometry.attributes.position.array.forEach((v, i) => {
-    if(particlesGeometry.attributes.position.array[i + 1] < -10) {
-      particlesGeometry.attributes.position.array[i + 1] = 10;
-    }
-  });
-
-  particlesGeometry.attributes.position.needsUpdate = true;
-}
-
-
 const objectTypes = [
-    { color: 0xff0000, speed: 0.05 },
-    { color: 0x00ff00, speed: 0.08 },
-    { color: 0x0000ff, speed: 0.02 },
-  ];
+  { color: 0xff0000, speed: 0.05 },
+  { color: 0x00ff00, speed: 0.08 },
+  { color: 0x0000ff, speed: 0.02 }
+];
 
-// Generate random falling objects
 // Generate random falling objects with types
 const addRandomObject = () => {
-    const randomType = objectTypes[Math.floor(Math.random() * objectTypes.length)];
-    const geometries = [
-      new THREE.BoxGeometry(),
-      new THREE.ConeGeometry(0.5, 1, 32),
-      new THREE.CylinderGeometry(0.5, 0.5, 1, 32),
-    ];
-    // object.rotation.y = Math.random() * 2 * Math.PI; // Random start rotation 
-    // object.scale.set(0.5, 1, 0.5); // Scale
-    const material = new THREE.MeshPhongMaterial({ color: randomType.color });
-    const mesh = new THREE.Mesh(geometries[Math.floor(Math.random() * geometries.length)], material);
-    mesh.userData.speed = randomType.speed; // Attach speed to object
-    mesh.position.y = 5;
-    mesh.position.z = (Math.random() - 0.2) * 10;
-    mesh.position.x = (Math.random() - 0.5) * 10;
-    mesh.castShadow = true;
-    scene.add(mesh);
-    objects.push(mesh);
-  };
-
+  const randomType =
+    objectTypes[Math.floor(Math.random() * objectTypes.length)];
+  const geometries = [
+    new THREE.BoxGeometry(),
+    new THREE.ConeGeometry(0.5, 1, 32),
+    new THREE.CylinderGeometry(0.5, 0.5, 1, 32)
+  ];
+  // object.rotation.y = Math.random() * 2 * Math.PI; // Random start rotation
+  // object.scale.set(0.5, 1, 0.5); // Scale
+  const material = new THREE.MeshPhongMaterial({ color: randomType.color });
+  const mesh = new THREE.Mesh(
+    geometries[Math.floor(Math.random() * geometries.length)],
+    material
+  );
+  mesh.userData.speed = randomType.speed; // Attach speed to object
+  mesh.position.y = 5;
+  mesh.position.z = (Math.random() - 0.5) * 18;
+  mesh.position.x = (Math.random() - 0.5) * 24;
+  mesh.castShadow = true;
+  scene.add(mesh);
+  objects.push(mesh);
+};
 
 // Array to hold moving obstacles
 const movingObstacles = [];
 
 // Function to add moving obstacles
 const addMovingObstacle = () => {
-    const geometry = new THREE.BoxGeometry();
-    const material = new THREE.MeshPhongMaterial({ color: 0xff00ff }); // Purple color
-    const obstacle = new THREE.Mesh(geometry, material);
-    obstacle.position.y = -4;
-    obstacle.position.x = (Math.random() - 0.5) * 8;
-    obstacle.position.z = (Math.random() - 0.5) * 8;
-    obstacle.userData.directionX = (Math.random() - 0.5) * 0.02; // Random initial direction X
-    obstacle.userData.directionZ = (Math.random() - 0.5) * 0.02; // Random initial direction Z
-    obstacle.castShadow = true;
+  const geometry = new THREE.BoxGeometry();
+  const material = new THREE.MeshPhongMaterial({ color: 0xff00ff }); // Purple color
+  const obstacle = new THREE.Mesh(geometry, material);
+  obstacle.position.y = -4;
+  obstacle.position.x = (Math.random() - 0.5) * 24;
+  obstacle.position.z = (Math.random() - 0.5) * 8;
+  obstacle.userData.directionX = (Math.random() - 0.5) * 0.02; // Random initial direction X
+  obstacle.userData.directionZ = (Math.random() - 0.5) * 0.02; // Random initial direction Z
+  obstacle.castShadow = true;
 
-    scene.add(obstacle);
-    movingObstacles.push(obstacle);
-  };
+  scene.add(obstacle);
+  movingObstacles.push(obstacle);
+};
 // Add a moving obstacle every 5 seconds
 setInterval(addMovingObstacle, 5000);
 
 // Create a "shield" around the player
 const shieldGeometry = new THREE.SphereGeometry(1.25, 32, 32);
-const shieldMaterial = new THREE.MeshPhongMaterial({ color: 0xffff00, transparent: true, opacity: 0.5 });
+const shieldMaterial = new THREE.MeshPhongMaterial({
+  color: 0xffffff,
+  transparent: true,
+  opacity: 0.5
+});
 const shield = new THREE.Mesh(shieldGeometry, shieldMaterial);
-shield.visible = false;  // Initially not visible
-player.add(shield);  // Attach to the player
+shield.visible = false; // Initially not visible
+player.add(shield); // Attach to the player
 
 // Shield status
 let shieldActive = false;
@@ -211,9 +159,13 @@ const projectiles = [];
 // Function to fire a projectile
 const fireProjectile = () => {
   const geometry = new THREE.SphereGeometry(0.1, 32, 32);
-  const material = new THREE.MeshPhongMaterial({ color: 0xffffff });  // White color
+  const material = new THREE.MeshPhongMaterial({ color: 0xffffff }); // White color
   const projectile = new THREE.Mesh(geometry, material);
-  projectile.position.set(player.position.x, player.position.y, player.position.z);
+  projectile.position.set(
+    player.position.x,
+    player.position.y,
+    player.position.z
+  );
   projectile.userData.speed = 0.2;
   projectile.castShadow = true;
   scene.add(projectile);
@@ -223,17 +175,23 @@ const fireProjectile = () => {
 // Function to create shattered pieces
 const createShatteredPieces = (object) => {
   const geometry = new THREE.BoxGeometry(0.2, 0.2, 0.2);
-  const material = new THREE.MeshPhongMaterial({ color: object.material.color });
+  const material = new THREE.MeshPhongMaterial({
+    color: object.material.color
+  });
   const pieces = [];
 
   for (let i = 0; i < 10; i++) {
     const piece = new THREE.Mesh(geometry, material);
     piece.position.set(object.position.x, object.position.y, object.position.z);
     piece.userData.speed = Math.random() * 0.1 + 0.05;
-    piece.userData.direction = new THREE.Vector3(Math.random() - 0.5, Math.random(), Math.random() - 0.5).normalize();
+    piece.userData.direction = new THREE.Vector3(
+      Math.random() - 0.5,
+      Math.random(),
+      Math.random() - 0.5
+    ).normalize();
 
     piece.userData.explodeTime = 0.2; // Time to explode outward
-    piece.userData.gravityTime = 0;  // Time under gravity
+    piece.userData.gravityTime = 0; // Time under gravity
     piece.castShadow = true;
     scene.add(piece);
     pieces.push(piece);
@@ -242,29 +200,41 @@ const createShatteredPieces = (object) => {
   return pieces;
 };
 
+// Initialize ammo count
+let ammo = 10;
+let canShoot = true; // Flag to check if player can shoot
+
+// Function to handle cooldown
+const startCooldown = () => {
+  canShoot = false;
+  setTimeout(() => {
+    canShoot = true;
+  }, 1500);
+};
+
 const shatteredPieces = [];
 // Function to handle projectiles
 const handleProjectiles = () => {
   projectiles.forEach((projectile) => {
     projectile.position.y += projectile.userData.speed;
-    
+
     objects.forEach((object) => {
       if (checkCollision(projectile, object)) {
         const pieces = createShatteredPieces(object);
         shatteredPieces.push(...pieces);
         scene.remove(object);
         objects.splice(objects.indexOf(object), 1);
-        
+
         // Remove the projectile
         scene.remove(projectile);
         projectiles.splice(projectiles.indexOf(projectile), 1);
-        
+
         // Increase the score
-        score++;
+        score += 5;
         scoreElement.innerHTML = `Score: ${score}`;
       }
     });
-    
+
     if (projectile.position.y > 6) {
       // Remove the projectile if it goes out of bounds
       scene.remove(projectile);
@@ -294,12 +264,6 @@ const handleShatteredPieces = () => {
   });
 };
 
-
-
-
-
-
-
 // Collision detection
 const checkCollision = (a, b) => {
   const distance = a.position.distanceTo(b.position);
@@ -307,76 +271,104 @@ const checkCollision = (a, b) => {
 };
 
 // Keyboard event listener
-document.addEventListener('keydown', (event) => {
-    switch (event.code) {
-      case 'ArrowLeft':
-        velocityX = -0.2;
-        break;
-      case 'ArrowRight':
-        velocityX = 0.2;
-        break;
-      case 'ArrowUp':
-        velocityZ = -0.2;
-        break;
-      case 'ArrowDown':
-        velocityZ = 0.2;
-        break;
+document.addEventListener("keydown", (event) => {
+  switch (event.code) {
+    case "ArrowLeft":
+      velocityX = -0.2;
+      break;
+    case "ArrowRight":
+      velocityX = 0.2;
+      break;
+    case "ArrowUp":
+      velocityZ = -0.2;
+      break;
+    case "ArrowDown":
+      velocityZ = 0.2;
+      break;
+  }
+  if (event.code === "KeyS") {
+    shield.visible = true;
+    shieldActive = true;
+  }
+  if (event.code === "Space") {
+    // Check if player can shoot
+    if (canShoot) {
+      if (ammo > 0) {
+        fireProjectile();
+        ammo--; // Decrease ammo
+        ammoElement.innerHTML = `Ammo: ${ammo}`;
+      } else {
+        startCooldown(); // Start cooldown if out of bullets
+      }
     }
-    if (event.code === 'KeyS') {
-        shield.visible = true;
-        shieldActive = true;
-    }
-    if (event.code === 'Space') {
-      fireProjectile();
-    }
+  }
+});
 
-  });
-  
-  document.addEventListener('keyup', (event) => {
-    switch (event.code) {
-      case 'ArrowLeft':
-      case 'ArrowRight':
-        velocityX = 0;
-        break;
-      case 'ArrowUp':
-      case 'ArrowDown':
-        velocityZ = 0;
-        break;
-    }
-    if (event.code === 'KeyS') {
-        shield.visible = false;
-        shieldActive = false;
-    }
-  });
+document.addEventListener("keyup", (event) => {
+  switch (event.code) {
+    case "ArrowLeft":
+    case "ArrowRight":
+      velocityX = 0;
+      break;
+    case "ArrowUp":
+    case "ArrowDown":
+      velocityZ = 0;
+      break;
+  }
+  if (event.code === "KeyS") {
+    shield.visible = false;
+    shieldActive = false;
+  }
+});
 
-// Update material to respond to lighting
-playerMaterial.color.setHex(0x00ff00);
-playerMaterial.needsUpdate = true;  
+// Create the flag
+const flagGeometry = new THREE.BoxGeometry(1, 1, 0.5);
+const flagMaterial = new THREE.MeshPhongMaterial({ color: 0xffff00 }); // Yellow color
+const flag = new THREE.Mesh(flagGeometry, flagMaterial);
+flag.position.y = -4.5; // Close to the ground
+scene.add(flag);
 
+// Function to respawn the flag at a random location
+const respawnFlag = () => {
+  flag.position.x = (Math.random() - 0.5) * 20;
+  flag.position.z = (Math.random() - 0.5) * 10;
+};
+
+// Initialize flag for the first time
+respawnFlag();
+
+// Update function to include flag collision
+const handlePlayerAndFlag = () => {
+  if (checkCollision(player, flag)) {
+    score += 10;
+    scoreElement.innerHTML = `Score: ${score}`;
+    ammo = Math.min(ammo + 5, 30); // Increase ammo, up to a max of 30
+    ammoElement.innerHTML = `Ammo: ${ammo}`;
+    respawnFlag();
+  }
+};
 
 let gameOver = false;
-
 // Render loop (Game Loop)
 const animate = () => {
-    // particleAnimate();
+  // particleAnimate();
   if (gameOver) {
     return;
   }
 
   // Update player position with velocity and boundary checks
   player.position.x += velocityX;
-  player.position.x = Math.min(Math.max(player.position.x, -8), 8);
-  
+  player.position.x = Math.min(Math.max(player.position.x, -15), 15);
+
   player.position.z += velocityZ;
-  player.position.z = Math.min(Math.max(player.position.z, -8), 5);
-  
+  player.position.z = Math.min(Math.max(player.position.z, -15), 5);
 
   // Move falling objects and check for collisions
   objects.forEach((object) => {
-    object.position.y -= object.userData.speed;  // Use object's speed
+    object.position.y -= object.userData.speed; // Use object's speed
     if (checkCollision(player, object)) {
       gameOver = true;
-      scoreElement.innerHTML =`Game Over! Final Score: ${score}`
+      scoreElement.innerHTML = `Game Over! Final Score: ${score}`;
     }
     if (object.position.y < -6) {
       // Remove object from scene and array
@@ -388,26 +380,26 @@ const animate = () => {
     }
     // Move the obstacles horizontally
     movingObstacles.forEach((obstacle) => {
-        obstacle.position.x += obstacle.userData.directionX;
-        obstacle.position.z += obstacle.userData.directionZ;
-        
-        if (obstacle.position.x >= 8 || obstacle.position.x <= -8) {
-          obstacle.userData.directionX *= -1; // Reverse direction at X boundaries
-        }
-        if (obstacle.position.z >= 5 || obstacle.position.z <= -8) {
-          obstacle.userData.directionZ *= -1; // Reverse direction at Z boundaries
+      obstacle.position.x += obstacle.userData.directionX;
+      obstacle.position.z += obstacle.userData.directionZ;
+
+      if (obstacle.position.x >= 12 || obstacle.position.x <= -12) {
+        obstacle.userData.directionX *= -1; // Reverse direction at X boundaries
+      }
+      if (obstacle.position.z >= 4 || obstacle.position.z <= -14) {
+        obstacle.userData.directionZ *= -1; // Reverse direction at Z boundaries
+      }
+    });
+    if (shieldActive) {
+      objects.forEach((object) => {
+        if (checkCollision(shield, object)) {
+          scene.remove(object);
+          objects.splice(objects.indexOf(object), 1);
+          score++;
+          scoreElement.innerHTML = `Score: ${score}`;
         }
       });
-    if (shieldActive) {
-        objects.forEach((object) => {
-          if (checkCollision(shield, object)) {
-            scene.remove(object);
-            objects.splice(objects.indexOf(object), 1);
-            score++;
-            scoreElement.innerHTML = `Score: ${score}`;
-          }
-        });
-      }
+    }
   });
 
   // Add new falling object at random intervals
@@ -417,10 +409,13 @@ const animate = () => {
   // Handle projectiles
   handleProjectiles();
   handleShatteredPieces();
+  handlePlayerAndFlag();
+
   renderer.render(scene, camera);
   requestAnimationFrame(animate);
 };
 
 // Start the animation
 scoreElement.innerHTML = `Score: ${score}`;
+ammoElement.innerHTML = `Ammo: ${ammo}`;
 animate();
